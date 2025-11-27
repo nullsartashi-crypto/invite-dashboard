@@ -31,17 +31,11 @@
 
 #### 必需的环境变量
 
+**重要**：如果你使用 Railway 的 MySQL 插件，数据库相关的环境变量会**自动注入**，不需要手动配置！
+
+只需要配置以下变量：
+
 ```env
-# 数据库配置（Railway MySQL 会自动提供这些变量）
-DB_HOST=${{MYSQL_HOST}}
-DB_PORT=${{MYSQL_PORT}}
-DB_USER=${{MYSQL_USER}}
-DB_PASSWORD=${{MYSQL_PASSWORD}}
-DB_NAME=${{MYSQL_DATABASE}}
-
-# 服务器配置（Railway 会自动设置 PORT）
-PORT=${{PORT}}
-
 # API配置
 API_URL=https://trade.pepeboost888.io/api/trade/user/invite/data
 API_PASSWORD=inviteCodes978
@@ -52,6 +46,17 @@ CRON_SCHEDULE=0 0 * * *
 # Telegram Bot配置
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 TELEGRAM_CHAT_ID=your_chat_id_here
+```
+
+如果使用外部 MySQL 数据库（不是 Railway 插件），则需要手动配置：
+
+```env
+# 数据库配置（仅在使用外部数据库时需要）
+DB_HOST=your_mysql_host
+DB_PORT=3306
+DB_USER=your_username
+DB_PASSWORD=your_password
+DB_NAME=invite_dashboard
 ```
 
 #### 可选的环境变量（如果需要代理）
@@ -106,15 +111,29 @@ railway run node backend/scripts/initDb.js
 
 ## 数据库连接配置
 
-Railway 自动提供以下 MySQL 环境变量：
+### Railway MySQL 插件（推荐）
 
-- `MYSQL_HOST`
-- `MYSQL_PORT`
-- `MYSQL_USER`
-- `MYSQL_PASSWORD`
-- `MYSQL_DATABASE`
+当你在 Railway 项目中添加 MySQL 插件后，Railway 会自动注入以下环境变量：
 
-我们的应用会自动使用这些变量连接数据库。
+- `MYSQL_HOST` - 数据库主机地址
+- `MYSQL_PORT` - 数据库端口
+- `MYSQL_USER` - 数据库用户名
+- `MYSQL_PASSWORD` - 数据库密码
+- `MYSQL_DATABASE` - 数据库名称
+
+**我们的应用会自动检测并使用这些变量**，无需任何额外配置！
+
+### 自定义数据库
+
+如果使用外部 MySQL 数据库，可以配置以下环境变量：
+
+- `DB_HOST` - 数据库主机地址
+- `DB_PORT` - 数据库端口
+- `DB_USER` - 数据库用户名
+- `DB_PASSWORD` - 数据库密码
+- `DB_NAME` - 数据库名称
+
+应用会优先使用 `DB_*` 变量，如果没有则使用 `MYSQL_*` 变量。
 
 ## 自定义域名（可选）
 
