@@ -1,0 +1,21 @@
+{
+  "name": "invite-dashboard-frontend",
+  "version": "1.0.0",
+  "description": "邀请数据统计系统前端",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.3.11",
+    "element-plus": "^2.4.4",
+    "axios": "^1.6.2",
+    "echarts": "^5.4.3",
+    "dayjs": "^1.11.10"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.5.2",
+    "vite": "^5.0.8"
+  }
+}
