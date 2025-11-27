@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const path = require('path');
 const apiRoutes = require('./routes/api');
 const scheduler = require('./services/scheduler');
 require('dotenv').config();
@@ -31,9 +32,13 @@ app.get('/health', (req, res) => {
   });
 });
 
-// 404处理
-app.use((req, res) => {
-  res.status(404).json({ success: false, message: '接口不存在' });
+// 提供前端静态文件（生产环境）
+const publicPath = path.join(__dirname, 'public');
+app.use(express.static(publicPath));
+
+// SPA fallback - 所有非API请求返回 index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(publicPath, 'index.html'));
 });
 
 // 错误处理
