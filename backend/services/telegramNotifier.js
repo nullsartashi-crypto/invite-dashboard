@@ -106,7 +106,11 @@ class TelegramNotifier {
 
     data.top5.forEach((item, index) => {
       const name = item.name || item.invite_code;
-      message += `${index + 1}、${item.invite_code}「${name}」\n`;
+      const newInviteUsers = item.daily_new_invite_users || 0;
+      const newTradeUsers = item.daily_new_trade_users || 0;
+      const newTradeAmount = parseFloat(item.daily_new_trade_amount || 0).toFixed(2);
+
+      message += `${index + 1}、「${name}」注册：${newInviteUsers}  交易：${newTradeUsers} 交易额：${newTradeAmount}\n`;
     });
 
     return message;
