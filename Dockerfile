@@ -22,6 +22,9 @@ RUN npm run build
 WORKDIR /app/backend
 COPY backend/ ./
 
+# 复制数据库 schema 文件
+COPY database/ /app/database/
+
 # 创建目录用于存放前端构建文件
 RUN mkdir -p /app/backend/public
 
