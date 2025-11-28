@@ -297,16 +297,20 @@ const renderCharts = () => {
 
     chart1.setOption({
       tooltip: {
-        trigger: 'axis'
+        trigger: 'item'
       },
       legend: {
+        type: 'scroll',
         data: displayNames,
-        bottom: 0
+        bottom: 10,
+        pageButtonItemGap: 5,
+        pageIconSize: 10
       },
       grid: {
         left: '3%',
         right: '4%',
-        bottom: '15%',
+        bottom: '25%',
+        top: '10%',
         containLabel: true
       },
       xAxis: {
@@ -335,16 +339,20 @@ const renderCharts = () => {
 
     chart2.setOption({
       tooltip: {
-        trigger: 'axis'
+        trigger: 'item'
       },
       legend: {
+        type: 'scroll',
         data: displayNames,
-        bottom: 0
+        bottom: 10,
+        pageButtonItemGap: 5,
+        pageIconSize: 10
       },
       grid: {
         left: '3%',
         right: '4%',
-        bottom: '15%',
+        bottom: '25%',
+        top: '10%',
         containLabel: true
       },
       xAxis: {
@@ -373,17 +381,23 @@ const renderCharts = () => {
 
     chart3.setOption({
       tooltip: {
-        trigger: 'axis',
-        valueFormatter: (value) => formatAmount(value)
+        trigger: 'item',
+        formatter: function(params) {
+          return `${params.name}<br/>${params.seriesName}: ${formatAmount(params.value)}`
+        }
       },
       legend: {
+        type: 'scroll',
         data: displayNames,
-        bottom: 0
+        bottom: 10,
+        pageButtonItemGap: 5,
+        pageIconSize: 10
       },
       grid: {
         left: '3%',
         right: '4%',
-        bottom: '15%',
+        bottom: '25%',
+        top: '10%',
         containLabel: true
       },
       xAxis: {
