@@ -1,32 +1,52 @@
 /**
  * 数据库迁移脚本
- * 执行所有未执行的迁移文件
+ * 添加基准字段到 invite_codes 表
  */
 
 require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
 const db = require('./config/db');
 
 async function runMigrations() {
   console.log('开始执行数据库迁移...\n');
 
   try {
-    // 读取迁移文件
-    const migrationFile = path.join(__dirname, '../database/migrations/001_add_baseline_fields.sql');
+    // 直接定义 SQL 语句（避免文件路径问题）
+    const statements = [
+      // 第一条：添加基准字段
+      `ALTER TABLE invite_codes
+       ADD COLUMN baseline_invite_users INT DEFAULT 0 COMMENT '基准邀请用户数',
+       ADD COLUMN baseline_trade_users INT DEFAULT 0 COMMENT '基准交易用户数',
+       ADD COLUMN baseline_trade_amount DECIMAL(20, 2) DEFAULT 0 COMMENT '基准交易额',
+       ADD COLUMN baseline_self_trade_amount DECIMAL(20, 2) DEFAULT 0 COMMENT '基准自己交易额',
+       ADD COLUMN baseline_date DATE COMMENT '基准数据日期',
+       ADD COLUMN baseline_raw_data JSON COMMENT '基准原始API数据'`,
 
-    if (!fs.existsSync(migrationFile)) {
-      console.log('未找到迁移文件');
-      process.exit(0);
-    }
-
-    const sql = fs.readFileSync(migrationFile, 'utf8');
-
-    // 分割多个SQL语句（按分号分割，但要注意存储过程等情况）
-    const statements = sql
-      .split(';')
-      .map(s => s.trim())
-      .filter(s => s.length > 0 && !s.startsWith('--'));
+      // 第二条：为已存在的邀请码初始化基准数据
+      `UPDATE invite_codes ic
+       INNER JOIN (
+         SELECT
+           invite_code,
+           total_invite_users,
+           total_trade_users,
+           total_trade_amount,
+           total_self_trade_amount,
+           record_date,
+           raw_data
+         FROM daily_invite_data d1
+         WHERE record_date = (
+           SELECT MIN(record_date)
+           FROM daily_invite_data d2
+           WHERE d2.invite_code = d1.invite_code
+         )
+       ) first_record ON ic.invite_code = first_record.invite_code
+       SET
+         ic.baseline_invite_users = first_record.total_invite_users,
+         ic.baseline_trade_users = first_record.total_trade_users,
+         ic.baseline_trade_amount = first_record.total_trade_amount,
+         ic.baseline_self_trade_amount = first_record.total_self_trade_amount,
+         ic.baseline_date = first_record.record_date,
+         ic.baseline_raw_data = first_record.raw_data`
+    ];
 
     console.log(`找到 ${statements.length} 条SQL语句\n`);
 
