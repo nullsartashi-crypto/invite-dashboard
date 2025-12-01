@@ -182,9 +182,18 @@ class TelegramBotListener {
       // 查询邀请码数据
       console.log(`🔍 查询邀请码 ${inviteCode} 的数据...`);
       const data = await this.getInviteCodeData(inviteCode);
+
+      // 处理不同的返回情况
       if (!data) {
         console.log(`❌ 未找到邀请码 ${inviteCode} 的数据`);
-        await this.sendMessage('未找到该邀请码的数据', chatId);
+        await this.sendMessage('未找到该邀请码的数据，可能是邀请码不存在或 API 查询失败', chatId);
+        return;
+      }
+
+      // 邀请码已被禁用
+      if (data.error === 'disabled') {
+        console.log(`⚠️  邀请码 ${inviteCode} 已被禁用`);
+        await this.sendMessage('该邀请码已被禁用', chatId);
         return;
       }
 
@@ -211,8 +220,36 @@ class TelegramBotListener {
         [inviteCode]
       );
 
-      if (codeInfo.length === 0 || codeInfo[0].status !== 1) {
-        return null;
+      // 邀请码不存在，尝试自动添加
+      if (codeInfo.length === 0) {
+        console.log(`邀请码 ${inviteCode} 不存在，尝试自动添加...`);
+        const added = await this.autoAddInviteCode(inviteCode);
+
+        if (!added) {
+          console.log(`❌ 自动添加邀请码 ${inviteCode} 失败`);
+          return null; // 自动添加失败
+        }
+
+        // 自动添加成功，重新查询邀请码信息
+        console.log(`✅ 自动添加成功，重新查询邀请码 ${inviteCode} 的数据`);
+        const [newCodeInfo] = await db.query(
+          'SELECT name, status FROM invite_codes WHERE invite_code = ?',
+          [inviteCode]
+        );
+
+        if (newCodeInfo.length === 0) {
+          console.log(`❌ 重新查询失败，未找到邀请码 ${inviteCode}`);
+          return null;
+        }
+
+        // 使用新查询的数据继续
+        codeInfo[0] = newCodeInfo[0];
+      }
+
+      // 邀请码已禁用
+      if (codeInfo[0].status !== 1) {
+        console.log(`⚠️  邀请码 ${inviteCode} 已被禁用`);
+        return { error: 'disabled' };
       }
 
       const name = codeInfo[0].name || inviteCode;
@@ -261,11 +298,123 @@ class TelegramBotListener {
   }
 
   /**
+   * 自动添加邀请码到系统
+   * @param {string} inviteCode - 邀请码
+   * @returns {Promise<boolean>} 是否添加成功
+   */
+  async autoAddInviteCode(inviteCode) {
+    const connection = await db.getConnection();
+
+    try {
+      console.log(`🔄 开始自动添加邀请码: ${inviteCode}`);
+
+      // 步骤 1: 调用 API 获取基准数据
+      const dataFetcher = require('./dataFetcher');
+      const apiData = await dataFetcher.fetchInviteData([inviteCode]);
+
+      // 提取 API 数据（兼容不同返回格式）
+      let codeData = apiData;
+      if (apiData.data && Array.isArray(apiData.data)) {
+        codeData = apiData.data.find(d =>
+          (d['邀请码'] && d['邀请码'].toLowerCase() === inviteCode.toLowerCase()) ||
+          (d.inviteCode && d.inviteCode.toLowerCase() === inviteCode.toLowerCase())
+        );
+      } else if (apiData[inviteCode]) {
+        codeData = apiData[inviteCode];
+      }
+
+      // 验证数据
+      if (!codeData) {
+        console.log(`❌ API 未返回邀请码 ${inviteCode} 的数据`);
+        return false;
+      }
+
+      // 提取基准数据（支持中英文字段）
+      const baselineInviteUsers = codeData['总邀请用户'] || codeData.inviteUsers || 0;
+      const baselineTradeUsers = codeData['总邀请交易用户'] || codeData.tradeUsers || 0;
+      const baselineTradeAmount = codeData['邀请总交易额'] || codeData.tradeAmount || 0;
+      const baselineSelfTradeAmount = codeData['用户自己交易额'] || codeData.selfTradeAmount || 0;
+      const baselineDate = new Date().toISOString().split('T')[0];
+
+      console.log(`✅ 获取到基准数据 - 总邀请用户: ${baselineInviteUsers}, 总交易用户: ${baselineTradeUsers}`);
+
+      // 步骤 2: 数据库事务插入
+      await connection.beginTransaction();
+
+      // 插入 invite_codes 表（name = 邀请码本身）
+      await connection.query(
+        `INSERT INTO invite_codes
+        (invite_code, name, baseline_invite_users, baseline_trade_users,
+         baseline_trade_amount, baseline_self_trade_amount, baseline_date, baseline_raw_data, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+        [
+          inviteCode,
+          inviteCode, // 需求：使用邀请码本身作为备注名
+          baselineInviteUsers,
+          baselineTradeUsers,
+          baselineTradeAmount,
+          baselineSelfTradeAmount,
+          baselineDate,
+          JSON.stringify(codeData)
+        ]
+      );
+
+      // 插入 daily_invite_data 表（累计=基准，新增=0）
+      await connection.query(
+        `INSERT INTO daily_invite_data
+        (invite_code, record_date, total_invite_users, total_trade_users,
+         total_trade_amount, total_self_trade_amount, daily_new_invite_users,
+         daily_new_trade_users, daily_new_trade_amount, daily_new_self_trade_amount, raw_data)
+        VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?)`,
+        [
+          inviteCode,
+          baselineDate,
+          baselineInviteUsers,
+          baselineTradeUsers,
+          baselineTradeAmount,
+          baselineSelfTradeAmount,
+          JSON.stringify(codeData)
+        ]
+      );
+
+      await connection.commit();
+      console.log(`✅ 邀请码 ${inviteCode} 自动添加成功`);
+      return true;
+
+    } catch (error) {
+      await connection.rollback();
+
+      // 处理重复添加（并发情况）
+      if (error.code === 'ER_DUP_ENTRY') {
+        console.log(`⚠️  邀请码 ${inviteCode} 已被其他进程添加（并发）`);
+        return true; // 虽然本次添加失败，但邀请码已存在，视为成功
+      }
+
+      console.error(`❌ 自动添加邀请码 ${inviteCode} 失败:`, error.message);
+      return false;
+
+    } finally {
+      connection.release();
+    }
+  }
+
+  /**
    * 格式化邀请数据消息
    */
   formatInviteData(data) {
-    return `「${data.name}」- ${data.inviteCode} 邀请数据
+    // 判断是否为首次添加（7日新增都为0）
+    const isFirstTime = data.newInviteUsers7d === 0 &&
+                        data.newTradeUsers7d === 0 &&
+                        data.newTradeAmount7d === 0;
 
+    let message = `「${data.name}」- ${data.inviteCode} 邀请数据\n`;
+
+    // 首次添加显示提示
+    if (isFirstTime) {
+      message += '\n📌 此邀请码为首次查询，已自动添加到系统\n';
+    }
+
+    message += `
 7 日新增邀请用户数：${data.newInviteUsers7d}
 7 日新增交易用户数：${data.newTradeUsers7d}
 7 日新增交易总额：${data.newTradeAmount7d.toFixed(4)}
@@ -273,6 +422,8 @@ class TelegramBotListener {
 总邀请用户数：${data.totalInviteUsers}
 总交易用户数：${data.totalTradeUsers}
 总交易总额：${data.totalTradeAmount.toFixed(4)}`;
+
+    return message;
   }
 
   /**
