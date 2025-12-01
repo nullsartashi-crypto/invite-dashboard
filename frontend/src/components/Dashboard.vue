@@ -64,19 +64,6 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="5" :xs="12" :sm="8" :md="6" :lg="5">
-        <el-card class="summary-card">
-          <div class="card-content">
-            <div class="card-icon self-trade">
-              <el-icon :size="32"><Wallet /></el-icon>
-            </div>
-            <div class="card-info">
-              <div class="card-title">累计自己交易额</div>
-              <div class="card-value">{{ formatAmount(summary.totalSelfTradeAmount) }}</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
     </el-row>
 
     <!-- 图表区域 -->
@@ -126,11 +113,6 @@
             {{ formatAmount(row.total_trade_amount) }}
           </template>
         </el-table-column>
-        <el-table-column label="累计自己交易额" width="150" align="right">
-          <template #default="{ row }">
-            {{ formatAmount(row.total_self_trade_amount) }}
-          </template>
-        </el-table-column>
         <el-table-column label="昨日新增用户" width="130" align="right">
           <template #default="{ row }">
             <el-tag v-if="row.daily_new_invite_users > 0" type="success">
@@ -168,7 +150,6 @@ const summary = ref({
   totalInviteUsers: 0,
   totalTradeUsers: 0,
   totalTradeAmount: 0,
-  totalSelfTradeAmount: 0,
   totalCommissionFee: 0
 })
 const latestData = ref([])
@@ -293,13 +274,27 @@ const renderCharts = () => {
       smooth: true
     }))
 
+    // 添加总计系列
+    series.unshift({
+      name: '总计',
+      type: 'line',
+      data: dates.map(date => {
+        return Object.values(dataByDate[date].inviteUsers)
+          .reduce((sum, val) => sum + (val || 0), 0)
+      }),
+      smooth: true,
+      lineStyle: { color: '#ff0000', width: 3 },
+      itemStyle: { color: '#ff0000' },
+      emphasis: { focus: 'series' }
+    })
+
     chart1.setOption({
       tooltip: {
         trigger: 'item'
       },
       legend: {
         type: 'scroll',
-        data: displayNames,
+        data: ['总计', ...displayNames],
         bottom: 10,
         pageButtonItemGap: 5,
         pageIconSize: 10
@@ -335,13 +330,27 @@ const renderCharts = () => {
       smooth: true
     }))
 
+    // 添加总计系列
+    series.unshift({
+      name: '总计',
+      type: 'line',
+      data: dates.map(date => {
+        return Object.values(dataByDate[date].tradeUsers)
+          .reduce((sum, val) => sum + (val || 0), 0)
+      }),
+      smooth: true,
+      lineStyle: { color: '#ff0000', width: 3 },
+      itemStyle: { color: '#ff0000' },
+      emphasis: { focus: 'series' }
+    })
+
     chart2.setOption({
       tooltip: {
         trigger: 'item'
       },
       legend: {
         type: 'scroll',
-        data: displayNames,
+        data: ['总计', ...displayNames],
         bottom: 10,
         pageButtonItemGap: 5,
         pageIconSize: 10
@@ -377,6 +386,20 @@ const renderCharts = () => {
       smooth: true
     }))
 
+    // 添加总计系列
+    series.unshift({
+      name: '总计',
+      type: 'line',
+      data: dates.map(date => {
+        return Object.values(dataByDate[date].tradeAmount)
+          .reduce((sum, val) => sum + (val || 0), 0)
+      }),
+      smooth: true,
+      lineStyle: { color: '#ff0000', width: 3 },
+      itemStyle: { color: '#ff0000' },
+      emphasis: { focus: 'series' }
+    })
+
     chart3.setOption({
       tooltip: {
         trigger: 'item',
@@ -386,7 +409,7 @@ const renderCharts = () => {
       },
       legend: {
         type: 'scroll',
-        data: displayNames,
+        data: ['总计', ...displayNames],
         bottom: 10,
         pageButtonItemGap: 5,
         pageIconSize: 10

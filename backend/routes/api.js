@@ -351,7 +351,6 @@ router.get('/dashboard', async (req, res) => {
       totalInviteUsers: latestData.reduce((sum, row) => sum + (row.total_invite_users || 0), 0),
       totalTradeUsers: latestData.reduce((sum, row) => sum + (row.total_trade_users || 0), 0),
       totalTradeAmount: totalTradeAmount,
-      totalSelfTradeAmount: latestData.reduce((sum, row) => sum + parseFloat(row.total_self_trade_amount || 0), 0),
       totalCommissionFee: totalTradeAmount * 0.01  // 贡献手续费 = 累计交易额 * 0.01
     };
 

@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const apiRoutes = require('./routes/api');
 const scheduler = require('./services/scheduler');
+const telegramBotListener = require('./services/telegramBotListener');
 require('dotenv').config();
 
 const app = express();
@@ -55,17 +56,23 @@ app.listen(PORT, () => {
   // 启动定时任务
   scheduler.start();
   console.log('定时任务已启动');
+
+  // 启动Telegram Bot监听器
+  telegramBotListener.start();
+  console.log('Telegram Bot监听器已启动');
 });
 
 // 优雅关闭
 process.on('SIGTERM', () => {
   console.log('收到 SIGTERM 信号，正在关闭服务器...');
   scheduler.stop();
+  telegramBotListener.stop();
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
   console.log('收到 SIGINT 信号，正在关闭服务器...');
   scheduler.stop();
+  telegramBotListener.stop();
   process.exit(0);
 });
