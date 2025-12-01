@@ -27,9 +27,34 @@ class TelegramBotListener {
       console.log('Bot监听器已在运行');
       return;
     }
+
+    // 诊断信息
+    console.log('========== Telegram Bot 启动诊断 ==========');
+    console.log(`Bot Token: ${this.botToken ? this.botToken.substring(0, 20) + '...' : '❌ 未设置'}`);
+    console.log(`Chat ID: ${this.chatId || '❌ 未设置'}`);
+    console.log(`API URL: ${this.apiUrl}`);
+    console.log(`代理: ${this.proxyUrl || '无'}`);
+
+    if (!this.botToken) {
+      console.error('❌ 错误: TELEGRAM_BOT_TOKEN 环境变量未设置！');
+      console.log('请在Railway环境变量中添加 TELEGRAM_BOT_TOKEN');
+      return;
+    }
+
+    if (!this.chatId) {
+      console.error('❌ 错误: TELEGRAM_CHAT_ID 环境变量未设置！');
+      console.log('请在Railway环境变量中添加 TELEGRAM_CHAT_ID');
+      return;
+    }
+
     console.log('启动Telegram Bot监听器...');
     this.isRunning = true;
-    this.poll();
+    this.poll().catch(error => {
+      console.error('❌ Bot轮询致命错误:', error);
+      this.isRunning = false;
+    });
+    console.log('✅ Bot监听器已启动，开始轮询');
+    console.log('==========================================');
   }
 
   /**
@@ -44,21 +69,31 @@ class TelegramBotListener {
    * 长轮询获取更新
    */
   async poll() {
+    console.log('🔄 开始Bot轮询循环...');
+    let pollCount = 0;
+
     while (this.isRunning) {
       try {
+        pollCount++;
+        if (pollCount === 1 || pollCount % 60 === 0) {
+          console.log(`🔄 Bot轮询中... (第${pollCount}次)`);
+        }
+
         const updates = await this.getUpdates();
         if (updates && updates.length > 0) {
+          console.log(`📨 收到 ${updates.length} 条新消息`);
           for (const update of updates) {
             await this.handleUpdate(update);
             this.offset = update.update_id + 1;
           }
         }
       } catch (error) {
-        console.error('轮询错误:', error.message);
+        console.error('❌ 轮询错误:', error.message);
         await this.sleep(5000); // 出错后等待5秒再重试
       }
       await this.sleep(1000); // 每次轮询间隔1秒
     }
+    console.log('⏹️  Bot轮询已停止');
   }
 
   /**
@@ -118,38 +153,50 @@ class TelegramBotListener {
   async handleUpdate(update) {
     try {
       if (!update.message || !update.message.text) {
+        console.log('⏭️  跳过非文本消息');
         return;
       }
+
+      const chatId = update.message.chat.id;
+      const text = update.message.text.trim();
+      const username = update.message.from?.username || update.message.from?.first_name || '未知用户';
+
+      console.log(`📩 收到消息: [${chatId}] ${username}: ${text}`);
 
       // 只响应配置的群组
-      if (update.message.chat.id.toString() !== this.chatId) {
+      if (chatId.toString() !== this.chatId) {
+        console.log(`⏭️  跳过非目标群组消息 (群组ID: ${chatId}, 目标ID: ${this.chatId})`);
         return;
       }
-
-      const text = update.message.text.trim();
 
       // 匹配 /invite 邀请码 格式
       const match = text.match(/^\/invite\s+(\S+)/);
       if (!match) {
+        console.log(`⏭️  跳过非 /invite 命令`);
         return;
       }
 
       const inviteCode = match[1];
-      console.log(`收到查询指令: /invite ${inviteCode}`);
+      console.log(`✅ 收到查询指令: /invite ${inviteCode}`);
 
       // 查询邀请码数据
+      console.log(`🔍 查询邀请码 ${inviteCode} 的数据...`);
       const data = await this.getInviteCodeData(inviteCode);
       if (!data) {
-        await this.sendMessage('未找到该邀请码的数据', update.message.chat.id);
+        console.log(`❌ 未找到邀请码 ${inviteCode} 的数据`);
+        await this.sendMessage('未找到该邀请码的数据', chatId);
         return;
       }
 
       // 格式化并发送消息
+      console.log(`✅ 找到数据，准备发送...`);
       const message = this.formatInviteData(data);
-      await this.sendMessage(message, update.message.chat.id);
+      await this.sendMessage(message, chatId);
+      console.log(`✅ 消息发送成功！`);
 
     } catch (error) {
-      console.error('处理消息失败:', error.message);
+      console.error('❌ 处理消息失败:', error.message);
+      console.error(error.stack);
     }
   }
 
