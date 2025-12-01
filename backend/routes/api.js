@@ -32,12 +32,95 @@ router.post('/invite-codes', async (req, res) => {
       return res.status(400).json({ success: false, message: '邀请码不能为空' });
     }
 
-    await db.query(
-      'INSERT INTO invite_codes (invite_code, name) VALUES (?, ?)',
-      [inviteCode, name || '']
-    );
+    // 步骤 1: 立即调用外部 API 获取当前数据作为基准
+    console.log(`正在获取邀请码 ${inviteCode} 的基准数据...`);
+    const apiData = await dataFetcher.fetchInviteData([inviteCode]);
 
-    res.json({ success: true, message: '邀请码添加成功' });
+    // 提取 API 数据（兼容不同返回格式）
+    let codeData = apiData;
+    if (apiData.data && Array.isArray(apiData.data)) {
+      codeData = apiData.data.find(d =>
+        (d['邀请码'] && d['邀请码'].toLowerCase() === inviteCode.toLowerCase()) ||
+        (d.inviteCode && d.inviteCode.toLowerCase() === inviteCode.toLowerCase())
+      );
+    } else if (apiData[inviteCode]) {
+      codeData = apiData[inviteCode];
+    }
+
+    if (!codeData) {
+      return res.status(400).json({
+        success: false,
+        message: '无法从 API 获取该邀请码的数据，请确认邀请码正确'
+      });
+    }
+
+    // 提取基准数据（支持中英文字段）
+    const baselineInviteUsers = codeData['总邀请用户'] || codeData.inviteUsers || 0;
+    const baselineTradeUsers = codeData['总邀请交易用户'] || codeData.tradeUsers || 0;
+    const baselineTradeAmount = codeData['邀请总交易额'] || codeData.tradeAmount || 0;
+    const baselineSelfTradeAmount = codeData['用户自己交易额'] || codeData.selfTradeAmount || 0;
+    const baselineDate = new Date().toISOString().split('T')[0];
+
+    // 步骤 2: 插入邀请码和基准数据（使用事务）
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      await connection.query(
+        `INSERT INTO invite_codes
+        (invite_code, name, baseline_invite_users, baseline_trade_users,
+         baseline_trade_amount, baseline_self_trade_amount, baseline_date, baseline_raw_data)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          inviteCode,
+          name || '',
+          baselineInviteUsers,
+          baselineTradeUsers,
+          baselineTradeAmount,
+          baselineSelfTradeAmount,
+          baselineDate,
+          JSON.stringify(codeData)
+        ]
+      );
+
+      // 步骤 3: 保存第一天的数据（累计=基准，新增=0）
+      await connection.query(
+        `INSERT INTO daily_invite_data
+        (invite_code, record_date, total_invite_users, total_trade_users,
+         total_trade_amount, total_self_trade_amount, daily_new_invite_users,
+         daily_new_trade_users, daily_new_trade_amount, daily_new_self_trade_amount, raw_data)
+        VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?)`,
+        [
+          inviteCode,
+          baselineDate,
+          baselineInviteUsers,
+          baselineTradeUsers,
+          baselineTradeAmount,
+          baselineSelfTradeAmount,
+          JSON.stringify(codeData)
+        ]
+      );
+
+      await connection.commit();
+      console.log(`邀请码 ${inviteCode} 添加成功，基准数据已保存`);
+
+      res.json({
+        success: true,
+        message: '邀请码添加成功',
+        baseline: {
+          inviteUsers: baselineInviteUsers,
+          tradeUsers: baselineTradeUsers,
+          tradeAmount: baselineTradeAmount,
+          selfTradeAmount: baselineSelfTradeAmount,
+          date: baselineDate
+        }
+      });
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
       res.status(400).json({ success: false, message: '邀请码已存在' });

@@ -77,19 +77,6 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6" :xs="24" :sm="24" :md="12" :lg="6">
-        <el-card class="summary-card">
-          <div class="card-content">
-            <div class="card-icon commission">
-              <el-icon :size="32"><Coin /></el-icon>
-            </div>
-            <div class="card-info">
-              <div class="card-title">累计贡献手续费</div>
-              <div class="card-value">{{ formatAmount(summary.totalCommissionFee) }}</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
     </el-row>
 
     <!-- 图表区域 -->
@@ -195,11 +182,22 @@ const tradeAmountChart = ref(null)
 let chartInstances = []
 
 const formatAmount = (amount) => {
-  if (!amount) return '0.00'
-  return parseFloat(amount).toLocaleString('zh-CN', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })
+  if (!amount) return '0'
+
+  const num = parseFloat(amount)
+
+  // 百万级别（>= 1,000,000）
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(2) + 'm'
+  }
+  // 千级别（>= 1,000）
+  else if (num >= 1000) {
+    return (num / 1000).toFixed(2) + 'k'
+  }
+  // 小于 1000
+  else {
+    return num.toFixed(2)
+  }
 }
 
 const loadDashboardData = async () => {

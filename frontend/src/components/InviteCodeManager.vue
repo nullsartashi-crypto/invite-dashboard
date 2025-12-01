@@ -138,12 +138,22 @@ const handleSubmit = async () => {
   submitting.value = true
   try {
     if (dialogMode.value === 'add') {
+      // 添加时提示正在获取基准数据
+      ElMessage.info('正在获取历史数据作为基准...')
+
       const res = await inviteCodeApi.add({
         inviteCode: form.value.inviteCode,
         name: form.value.name
       })
+
       if (res.success) {
-        ElMessage.success('添加成功')
+        // 显示基准数据信息
+        const baseline = res.baseline
+        ElMessage.success({
+          message: `添加成功！基准数据：邀请用户 ${baseline.inviteUsers}，交易用户 ${baseline.tradeUsers}`,
+          duration: 5000
+        })
+
         dialogVisible.value = false
         loadInviteCodes()
       }
