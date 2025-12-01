@@ -86,7 +86,28 @@ class TelegramBotListener {
       }
       return [];
     } catch (error) {
-      console.error('获取更新失败:', error.message);
+      // 如果使用代理失败，尝试直接连接
+      if (this.httpsAgent && !this.proxyFailed) {
+        console.log('代理连接失败，尝试直接连接Telegram API...');
+        this.proxyFailed = true;
+        try {
+          const config = {
+            timeout: 30000,
+            params: {
+              offset: this.offset,
+              timeout: 25
+            }
+          };
+          const response = await axios.get(`${this.apiUrl}/getUpdates`, config);
+          if (response.data.ok) {
+            console.log('✅ 直接连接成功，后续将不使用代理');
+            this.httpsAgent = null; // 禁用代理
+            return response.data.result;
+          }
+        } catch (directError) {
+          console.error('直接连接也失败:', directError.message);
+        }
+      }
       return [];
     }
   }
@@ -238,6 +259,27 @@ class TelegramBotListener {
       console.log('消息发送成功');
       return response.data;
     } catch (error) {
+      // 如果代理失败，尝试直接连接
+      if (this.httpsAgent) {
+        console.log('代理发送失败，尝试直接发送...');
+        try {
+          const response = await axios.post(
+            `${this.apiUrl}/sendMessage`,
+            {
+              chat_id: chatId,
+              text: text,
+              parse_mode: 'HTML'
+            },
+            { timeout: 30000 }
+          );
+          if (response.data.ok) {
+            console.log('✅ 直接发送成功');
+            return response.data;
+          }
+        } catch (directError) {
+          console.error('直接发送也失败:', directError.message);
+        }
+      }
       console.error('发送消息失败:', error.message);
       throw error;
     }
