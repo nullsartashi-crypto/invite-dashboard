@@ -355,10 +355,6 @@ router.get('/dashboard', async (req, res) => {
     `, [parseInt(days)]);
 
     // 获取昨日新增数据汇总
-    const yesterday = new Date();
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-
     const [yesterdayData] = await db.query(`
       SELECT
         SUM(d.daily_new_invite_users) as yesterday_new_invite_users,
