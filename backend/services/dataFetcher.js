@@ -65,33 +65,25 @@ class DataFetcher {
 
       let dailyNewInviteUsers, dailyNewTradeUsers, dailyNewTradeAmount, dailyNewSelfTradeAmount;
 
-      if (inviteCodeRecord.length > 0) {
-        // 使用基准数据计算累计新增（当前总数 - 基准）
-        const baseline = inviteCodeRecord[0];
-        dailyNewInviteUsers = totalInviteUsers - (baseline.baseline_invite_users || 0);
-        dailyNewTradeUsers = totalTradeUsers - (baseline.baseline_trade_users || 0);
-        dailyNewTradeAmount = totalTradeAmount - (baseline.baseline_trade_amount || 0);
-        dailyNewSelfTradeAmount = totalSelfTradeAmount - (baseline.baseline_self_trade_amount || 0);
-      } else {
-        // 如果找不到基准数据，使用前一天数据计算（兼容旧数据）
-        const [previousData] = await connection.query(
-          'SELECT * FROM daily_invite_data WHERE invite_code = ? AND record_date < ? ORDER BY record_date DESC LIMIT 1',
-          [inviteCode, dateStr]
-        );
+      // 获取前一天的数据用于计算真正的每日新增
+      const [previousData] = await connection.query(
+        'SELECT * FROM daily_invite_data WHERE invite_code = ? AND record_date < ? ORDER BY record_date DESC LIMIT 1',
+        [inviteCode, dateStr]
+      );
 
-        if (previousData.length > 0) {
-          const prev = previousData[0];
-          dailyNewInviteUsers = totalInviteUsers - (prev.total_invite_users || 0);
-          dailyNewTradeUsers = totalTradeUsers - (prev.total_trade_users || 0);
-          dailyNewTradeAmount = totalTradeAmount - (prev.total_trade_amount || 0);
-          dailyNewSelfTradeAmount = totalSelfTradeAmount - (prev.total_self_trade_amount || 0);
-        } else {
-          // 第一条数据，全部算作新增
-          dailyNewInviteUsers = totalInviteUsers;
-          dailyNewTradeUsers = totalTradeUsers;
-          dailyNewTradeAmount = totalTradeAmount;
-          dailyNewSelfTradeAmount = totalSelfTradeAmount;
-        }
+      if (previousData.length > 0) {
+        // 使用前一天数据计算每日新增（今天的total - 昨天的total）
+        const prev = previousData[0];
+        dailyNewInviteUsers = totalInviteUsers - (prev.total_invite_users || 0);
+        dailyNewTradeUsers = totalTradeUsers - (prev.total_trade_users || 0);
+        dailyNewTradeAmount = totalTradeAmount - (prev.total_trade_amount || 0);
+        dailyNewSelfTradeAmount = totalSelfTradeAmount - (prev.total_self_trade_amount || 0);
+      } else {
+        // 第一条数据，daily_new设为0（因为是基准数据）
+        dailyNewInviteUsers = 0;
+        dailyNewTradeUsers = 0;
+        dailyNewTradeAmount = 0;
+        dailyNewSelfTradeAmount = 0;
       }
 
       // 确保新增数据不为负数（防止数据异常）
