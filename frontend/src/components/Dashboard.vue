@@ -143,7 +143,12 @@
     <!-- 详细数据表格 -->
     <el-card class="data-table">
       <template #header>
-        <span>各邀请码最新数据</span>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span>各邀请码昨日数据</span>
+          <el-text type="info" size="small">
+            数据日期: {{ yesterdayDate }} (共 {{ latestData.length }} 个邀请码)
+          </el-text>
+        </div>
       </template>
       <el-table :data="latestData" style="width: 100%" stripe>
         <el-table-column prop="invite_code" label="邀请码" width="120" />
@@ -209,6 +214,7 @@ const summary = ref({
 })
 const latestData = ref([])
 const trendData = ref([])
+const yesterdayDate = ref('-')
 
 // 图表引用
 const inviteUsersChart = ref(null)
@@ -245,6 +251,15 @@ const loadDashboardData = async () => {
       latestData.value = res.latestData
       trendData.value = res.trendData
       lastUpdateTime.value = dayjs().format('YYYY-MM-DD HH:mm:ss')
+
+      // 设置昨日日期
+      if (res.latestData && res.latestData.length > 0) {
+        yesterdayDate.value = res.latestData[0].record_date
+      } else {
+        const yesterday = new Date()
+        yesterday.setUTCDate(yesterday.getUTCDate() - 1)
+        yesterdayDate.value = yesterday.toISOString().split('T')[0]
+      }
 
       await nextTick()
       renderCharts()

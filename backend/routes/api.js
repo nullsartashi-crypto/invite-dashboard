@@ -311,7 +311,12 @@ router.get('/dashboard', async (req, res) => {
   try {
     const { days = 7 } = req.query;
 
-    // 获取最新的累计数据（每个邀请码的最新记录）
+    // 计算昨日日期(与yesterdayData保持一致)
+    const yesterday = new Date();
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    // 获取昨日的详细数据（每个邀请码的昨日记录）
     const [latestData] = await db.query(`
       SELECT
         d.invite_code,
@@ -326,15 +331,11 @@ router.get('/dashboard', async (req, res) => {
         d.daily_new_self_trade_amount,
         c.name as invite_code_name
       FROM daily_invite_data d
-      INNER JOIN (
-        SELECT invite_code, MAX(record_date) as max_date
-        FROM daily_invite_data
-        GROUP BY invite_code
-      ) latest ON d.invite_code = latest.invite_code AND d.record_date = latest.max_date
       LEFT JOIN invite_codes c ON d.invite_code = c.invite_code
-      WHERE c.status = 1
-      ORDER BY d.total_trade_users DESC
-    `);
+      WHERE d.record_date = ?
+        AND c.status = 1
+      ORDER BY d.daily_new_trade_users DESC
+    `, [yesterdayStr]);
 
     // 获取指定天数的每日趋势数据
     const [trendData] = await db.query(`
@@ -375,16 +376,37 @@ router.get('/dashboard', async (req, res) => {
       yesterday_new_trade_amount: 0
     };
 
-    // 计算汇总数据
-    const totalTradeAmount = latestData.reduce((sum, row) => sum + parseFloat(row.total_trade_amount || 0), 0);
+    // 【新增】计算累计汇总数据(查询所有邀请码的最新记录)
+    const [totalSummaryRows] = await db.query(`
+      SELECT
+        SUM(d.total_invite_users) as total_invite_users,
+        SUM(d.total_trade_users) as total_trade_users,
+        SUM(d.total_trade_amount) as total_trade_amount
+      FROM daily_invite_data d
+      INNER JOIN (
+        SELECT invite_code, MAX(record_date) as max_date
+        FROM daily_invite_data
+        GROUP BY invite_code
+      ) latest ON d.invite_code = latest.invite_code AND d.record_date = latest.max_date
+      LEFT JOIN invite_codes c ON d.invite_code = c.invite_code
+      WHERE c.status = 1
+    `);
+
+    const totalSummary = totalSummaryRows[0] || {
+      total_invite_users: 0,
+      total_trade_users: 0,
+      total_trade_amount: 0
+    };
+
+    const totalTradeAmount = parseFloat(totalSummary.total_trade_amount || 0);
 
     const summary = {
-      // 累计数据（保持不变）
-      totalInviteUsers: latestData.reduce((sum, row) => sum + (row.total_invite_users || 0), 0),
-      totalTradeUsers: latestData.reduce((sum, row) => sum + (row.total_trade_users || 0), 0),
+      // 累计数据(从新增的totalSummary查询获取)
+      totalInviteUsers: totalSummary.total_invite_users || 0,
+      totalTradeUsers: totalSummary.total_trade_users || 0,
       totalTradeAmount: totalTradeAmount,
       totalCommissionFee: totalTradeAmount * 0.01,  // 贡献手续费 = 累计交易额 * 0.01
-      // 新增：昨日新增数据
+      // 昨日新增数据(保持不变)
       yesterdayNewInviteUsers: yesterdaySummary.yesterday_new_invite_users || 0,
       yesterdayNewTradeUsers: yesterdaySummary.yesterday_new_trade_users || 0,
       yesterdayNewTradeAmount: parseFloat(yesterdaySummary.yesterday_new_trade_amount || 0)
