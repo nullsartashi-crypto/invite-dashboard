@@ -23,9 +23,9 @@
       </el-row>
     </el-card>
 
-    <!-- 数据概览卡片 -->
+    <!-- 数据概览卡片 - 第一行：累计数据 -->
     <el-row :gutter="20" class="summary-cards" v-loading="loading">
-      <el-col :span="4" :xs="12" :sm="8" :md="6" :lg="4">
+      <el-col :span="8" :xs="12" :sm="8" :md="8" :lg="8">
         <el-card class="summary-card">
           <div class="card-content">
             <div class="card-icon user">
@@ -38,7 +38,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="4" :xs="12" :sm="8" :md="6" :lg="4">
+      <el-col :span="8" :xs="12" :sm="8" :md="8" :lg="8">
         <el-card class="summary-card">
           <div class="card-content">
             <div class="card-icon trade-user">
@@ -51,7 +51,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="5" :xs="12" :sm="8" :md="6" :lg="5">
+      <el-col :span="8" :xs="12" :sm="8" :md="8" :lg="8">
         <el-card class="summary-card">
           <div class="card-content">
             <div class="card-icon trade-amount">
@@ -60,6 +60,49 @@
             <div class="card-info">
               <div class="card-title">累计邀请交易额</div>
               <div class="card-value">{{ formatAmount(summary.totalTradeAmount) }}</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <!-- 数据概览卡片 - 第二行：昨日新增数据 -->
+    <el-row :gutter="20" class="summary-cards" v-loading="loading" style="margin-top: 20px;">
+      <el-col :span="8" :xs="12" :sm="8" :md="8" :lg="8">
+        <el-card class="summary-card yesterday-card">
+          <div class="card-content">
+            <div class="card-icon yesterday-user">
+              <el-icon :size="32"><User /></el-icon>
+            </div>
+            <div class="card-info">
+              <div class="card-title">昨日新增用户</div>
+              <div class="card-value">{{ summary.yesterdayNewInviteUsers || 0 }}</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="8" :xs="12" :sm="8" :md="8" :lg="8">
+        <el-card class="summary-card yesterday-card">
+          <div class="card-content">
+            <div class="card-icon yesterday-trade-user">
+              <el-icon :size="32"><ShoppingCart /></el-icon>
+            </div>
+            <div class="card-info">
+              <div class="card-title">昨日新增交易用户</div>
+              <div class="card-value">{{ summary.yesterdayNewTradeUsers || 0 }}</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="8" :xs="12" :sm="8" :md="8" :lg="8">
+        <el-card class="summary-card yesterday-card">
+          <div class="card-content">
+            <div class="card-icon yesterday-trade-amount">
+              <el-icon :size="32"><Money /></el-icon>
+            </div>
+            <div class="card-info">
+              <div class="card-title">昨日新增交易额</div>
+              <div class="card-value">{{ formatAmount(summary.yesterdayNewTradeAmount) }}</div>
             </div>
           </div>
         </el-card>
@@ -121,6 +164,14 @@
             <span v-else>0</span>
           </template>
         </el-table-column>
+        <el-table-column label="昨日新增交易用户" width="150" align="right">
+          <template #default="{ row }">
+            <el-tag v-if="row.daily_new_trade_users > 0" type="primary">
+              +{{ row.daily_new_trade_users }}
+            </el-tag>
+            <span v-else>0</span>
+          </template>
+        </el-table-column>
         <el-table-column label="昨日新增交易额" width="150" align="right">
           <template #default="{ row }">
             <el-tag v-if="row.daily_new_trade_amount > 0" type="warning">
@@ -150,7 +201,11 @@ const summary = ref({
   totalInviteUsers: 0,
   totalTradeUsers: 0,
   totalTradeAmount: 0,
-  totalCommissionFee: 0
+  totalCommissionFee: 0,
+  // 新增：昨日新增数据
+  yesterdayNewInviteUsers: 0,
+  yesterdayNewTradeUsers: 0,
+  yesterdayNewTradeAmount: 0
 })
 const latestData = ref([])
 const trendData = ref([])
@@ -499,6 +554,11 @@ onBeforeUnmount(() => {
 .card-icon.trade-amount { background: #fff7e6; color: #d48806; }
 .card-icon.self-trade { background: #f0f5ff; color: #597ef7; }
 .card-icon.commission { background: #f6ffed; color: #52c41a; }
+
+/* 昨日数据卡片配色方案 */
+.card-icon.yesterday-user { background: #fff0f6; color: #c41d7f; }
+.card-icon.yesterday-trade-user { background: #e6fffb; color: #08979c; }
+.card-icon.yesterday-trade-amount { background: #fffbe6; color: #d4b106; }
 
 .card-info {
   flex: 1;

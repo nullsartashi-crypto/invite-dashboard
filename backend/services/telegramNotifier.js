@@ -55,7 +55,25 @@ class TelegramNotifier {
       yesterday.setUTCDate(yesterday.getUTCDate() - 1);
       const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-      // 获取昨日数据并按昨日新增交易用户数排序Top5
+      // 第一次查询：所有启用邀请码的昨日新增总和
+      const [summaryRows] = await db.query(`
+        SELECT
+          SUM(d.daily_new_invite_users) as total_new_invite_users,
+          SUM(d.daily_new_trade_users) as total_new_trade_users,
+          SUM(d.daily_new_trade_amount) as total_new_trade_amount
+        FROM daily_invite_data d
+        LEFT JOIN invite_codes c ON d.invite_code = c.invite_code
+        WHERE d.record_date = ?
+          AND c.status = 1
+      `, [yesterdayStr]);
+
+      const summaryData = summaryRows[0] || {
+        total_new_invite_users: 0,
+        total_new_trade_users: 0,
+        total_new_trade_amount: 0
+      };
+
+      // 第二次查询：Top5排行榜
       const [rows] = await db.query(`
         SELECT
           d.invite_code,
@@ -75,10 +93,11 @@ class TelegramNotifier {
         return null;
       }
 
+      // 使用summaryData而非rows求和
       return {
-        totalNewInviteUsers: rows.reduce((sum, r) => sum + (r.daily_new_invite_users || 0), 0),
-        totalNewTradeUsers: rows.reduce((sum, r) => sum + (r.daily_new_trade_users || 0), 0),
-        totalNewTradeAmount: rows.reduce((sum, r) => sum + parseFloat(r.daily_new_trade_amount || 0), 0),
+        totalNewInviteUsers: summaryData.total_new_invite_users || 0,
+        totalNewTradeUsers: summaryData.total_new_trade_users || 0,
+        totalNewTradeAmount: parseFloat(summaryData.total_new_trade_amount || 0),
         top5: rows
       };
     } catch (error) {

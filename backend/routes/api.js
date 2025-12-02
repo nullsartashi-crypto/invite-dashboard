@@ -314,7 +314,16 @@ router.get('/dashboard', async (req, res) => {
     // 获取最新的累计数据（每个邀请码的最新记录）
     const [latestData] = await db.query(`
       SELECT
-        d.*,
+        d.invite_code,
+        d.record_date,
+        d.total_invite_users,
+        d.total_trade_users,
+        d.total_trade_amount,
+        d.total_self_trade_amount,
+        d.daily_new_invite_users,
+        d.daily_new_trade_users,
+        d.daily_new_trade_amount,
+        d.daily_new_self_trade_amount,
         c.name as invite_code_name
       FROM daily_invite_data d
       INNER JOIN (
@@ -344,14 +353,41 @@ router.get('/dashboard', async (req, res) => {
       ORDER BY d.record_date ASC, d.invite_code
     `, [parseInt(days)]);
 
+    // 获取昨日新增数据汇总
+    const yesterday = new Date();
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    const [yesterdayData] = await db.query(`
+      SELECT
+        SUM(d.daily_new_invite_users) as yesterday_new_invite_users,
+        SUM(d.daily_new_trade_users) as yesterday_new_trade_users,
+        SUM(d.daily_new_trade_amount) as yesterday_new_trade_amount
+      FROM daily_invite_data d
+      LEFT JOIN invite_codes c ON d.invite_code = c.invite_code
+      WHERE d.record_date = ?
+        AND c.status = 1
+    `, [yesterdayStr]);
+
+    const yesterdaySummary = yesterdayData[0] || {
+      yesterday_new_invite_users: 0,
+      yesterday_new_trade_users: 0,
+      yesterday_new_trade_amount: 0
+    };
+
     // 计算汇总数据
     const totalTradeAmount = latestData.reduce((sum, row) => sum + parseFloat(row.total_trade_amount || 0), 0);
 
     const summary = {
+      // 累计数据（保持不变）
       totalInviteUsers: latestData.reduce((sum, row) => sum + (row.total_invite_users || 0), 0),
       totalTradeUsers: latestData.reduce((sum, row) => sum + (row.total_trade_users || 0), 0),
       totalTradeAmount: totalTradeAmount,
-      totalCommissionFee: totalTradeAmount * 0.01  // 贡献手续费 = 累计交易额 * 0.01
+      totalCommissionFee: totalTradeAmount * 0.01,  // 贡献手续费 = 累计交易额 * 0.01
+      // 新增：昨日新增数据
+      yesterdayNewInviteUsers: yesterdaySummary.yesterday_new_invite_users || 0,
+      yesterdayNewTradeUsers: yesterdaySummary.yesterday_new_trade_users || 0,
+      yesterdayNewTradeAmount: parseFloat(yesterdaySummary.yesterday_new_trade_amount || 0)
     };
 
     res.json({
