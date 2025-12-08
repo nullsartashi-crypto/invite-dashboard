@@ -328,7 +328,9 @@ const renderCharts = () => {
     dataByDate[date].selfTradeAmount[item.invite_code] = item.daily_new_self_trade_amount
   })
 
-  const dates = Object.keys(dataByDate).sort()
+  const dates = Object.keys(dataByDate)
+    .filter(date => date !== '2024-12-01')  // 过滤掉12月1日基准数据
+    .sort()
   const inviteCodes = [...new Set(trendData.value.map(item => item.invite_code))]
   const displayNames = inviteCodes.map(code => codeNameMap[code] || code)
 

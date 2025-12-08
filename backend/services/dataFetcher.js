@@ -86,11 +86,14 @@ class DataFetcher {
         dailyNewSelfTradeAmount = 0;
       }
 
-      // 确保新增数据不为负数（防止数据异常）
+      // 确保用户数不为负数（防止数据异常）
       dailyNewInviteUsers = Math.max(0, dailyNewInviteUsers);
       dailyNewTradeUsers = Math.max(0, dailyNewTradeUsers);
-      dailyNewTradeAmount = Math.max(0, dailyNewTradeAmount);
-      dailyNewSelfTradeAmount = Math.max(0, dailyNewSelfTradeAmount);
+
+      // 交易额允许为负数（代表交易取消/回退），但记录日志
+      if (dailyNewTradeAmount < 0 || dailyNewSelfTradeAmount < 0) {
+        console.log(`⚠️  邀请码 ${inviteCode} 检测到负数交易额变化: trade=${dailyNewTradeAmount.toFixed(2)}, selfTrade=${dailyNewSelfTradeAmount.toFixed(2)}`);
+      }
 
       // 插入或更新数据
       await connection.query(

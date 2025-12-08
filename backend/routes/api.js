@@ -337,6 +337,11 @@ router.get('/dashboard', async (req, res) => {
       ORDER BY d.daily_new_trade_users DESC
     `, [yesterdayStr]);
 
+    // 计算起始日期（使用UTC时间，与latestData保持一致）
+    const startDate = new Date();
+    startDate.setUTCDate(startDate.getUTCDate() - parseInt(days));
+    const startDateStr = startDate.toISOString().split('T')[0];
+
     // 获取指定天数的每日趋势数据
     const [trendData] = await db.query(`
       SELECT
@@ -349,10 +354,10 @@ router.get('/dashboard', async (req, res) => {
         d.daily_new_self_trade_amount
       FROM daily_invite_data d
       LEFT JOIN invite_codes c ON d.invite_code = c.invite_code
-      WHERE d.record_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+      WHERE d.record_date >= ?
         AND d.invite_code IN (SELECT invite_code FROM invite_codes WHERE status = 1)
       ORDER BY d.record_date ASC, d.invite_code
-    `, [parseInt(days)]);
+    `, [startDateStr]);
 
     // 获取昨日新增数据汇总
     const [yesterdayData] = await db.query(`
