@@ -85,7 +85,7 @@ class TelegramNotifier {
         LEFT JOIN invite_codes c ON d.invite_code = c.invite_code
         WHERE d.record_date = ?
           AND c.status = 1
-        ORDER BY d.daily_new_trade_users DESC
+        ORDER BY d.daily_new_invite_users DESC, d.daily_new_trade_amount DESC
         LIMIT 5
       `, [yesterdayStr]);
 
