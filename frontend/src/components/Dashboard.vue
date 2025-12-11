@@ -154,14 +154,14 @@
         <el-table-column prop="invite_code" label="邀请码" width="120" />
         <el-table-column prop="invite_code_name" label="名称" width="150" />
         <el-table-column prop="record_date" label="日期" width="120" />
-        <el-table-column prop="total_invite_users" label="累计邀请用户" width="130" align="right" />
-        <el-table-column prop="total_trade_users" label="累计交易用户" width="130" align="right" />
-        <el-table-column label="累计邀请交易额" width="150" align="right">
+        <el-table-column prop="total_invite_users" label="累计邀请用户" width="130" align="right" sortable />
+        <el-table-column prop="total_trade_users" label="累计交易用户" width="130" align="right" sortable />
+        <el-table-column prop="total_trade_amount" label="累计邀请交易额" width="150" align="right" sortable>
           <template #default="{ row }">
             {{ formatAmount(row.total_trade_amount) }}
           </template>
         </el-table-column>
-        <el-table-column label="昨日新增用户" width="130" align="right">
+        <el-table-column prop="daily_new_invite_users" label="昨日新增用户" width="130" align="right" sortable>
           <template #default="{ row }">
             <el-tag v-if="row.daily_new_invite_users > 0" type="success">
               +{{ row.daily_new_invite_users }}
@@ -169,7 +169,7 @@
             <span v-else>0</span>
           </template>
         </el-table-column>
-        <el-table-column label="昨日新增交易用户" width="150" align="right">
+        <el-table-column prop="daily_new_trade_users" label="昨日新增交易用户" width="150" align="right" sortable>
           <template #default="{ row }">
             <el-tag v-if="row.daily_new_trade_users > 0" type="primary">
               +{{ row.daily_new_trade_users }}
@@ -177,7 +177,7 @@
             <span v-else>0</span>
           </template>
         </el-table-column>
-        <el-table-column label="昨日新增交易额" width="150" align="right">
+        <el-table-column prop="daily_new_trade_amount" label="昨日新增交易额" width="150" align="right" sortable>
           <template #default="{ row }">
             <el-tag v-if="row.daily_new_trade_amount > 0" type="warning">
               +{{ formatAmount(row.daily_new_trade_amount) }}
@@ -185,7 +185,7 @@
             <span v-else>0</span>
           </template>
         </el-table-column>
-        <el-table-column label="近7日邀请人数变化" width="160" align="right">
+        <el-table-column prop="seven_day_invite_users_change" label="近7日邀请人数变化" width="160" align="right" sortable>
           <template #default="{ row }">
             <span v-if="row.seven_day_invite_users_change === null" class="no-data">-</span>
             <el-tag v-else-if="row.seven_day_invite_users_change > 0" type="success">
@@ -197,7 +197,7 @@
             <span v-else>0</span>
           </template>
         </el-table-column>
-        <el-table-column label="近7日交易人数变化" width="160" align="right">
+        <el-table-column prop="seven_day_trade_users_change" label="近7日交易人数变化" width="160" align="right" sortable>
           <template #default="{ row }">
             <span v-if="row.seven_day_trade_users_change === null" class="no-data">-</span>
             <el-tag v-else-if="row.seven_day_trade_users_change > 0" type="success">
@@ -209,7 +209,7 @@
             <span v-else>0</span>
           </template>
         </el-table-column>
-        <el-table-column label="近7日交易额变化" width="160" align="right">
+        <el-table-column prop="seven_day_trade_amount_change" label="近7日交易额变化" width="160" align="right" sortable>
           <template #default="{ row }">
             <span v-if="row.seven_day_trade_amount_change === null" class="no-data">-</span>
             <el-tag v-else-if="row.seven_day_trade_amount_change > 0" type="success">
