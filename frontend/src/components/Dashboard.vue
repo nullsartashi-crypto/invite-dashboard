@@ -156,7 +156,7 @@
         <el-table-column prop="record_date" label="日期" width="120" />
         <el-table-column prop="total_invite_users" label="累计邀请用户" width="130" align="right" sortable />
         <el-table-column prop="total_trade_users" label="累计交易用户" width="130" align="right" sortable />
-        <el-table-column prop="total_trade_amount" label="累计邀请交易额" width="150" align="right" sortable>
+        <el-table-column prop="total_trade_amount" label="累计邀请交易额" width="150" align="right" sortable :sort-method="sortByTotalTradeAmount">
           <template #default="{ row }">
             {{ formatAmount(row.total_trade_amount) }}
           </template>
@@ -177,7 +177,7 @@
             <span v-else>0</span>
           </template>
         </el-table-column>
-        <el-table-column prop="daily_new_trade_amount" label="昨日新增交易额" width="150" align="right" sortable>
+        <el-table-column prop="daily_new_trade_amount" label="昨日新增交易额" width="150" align="right" sortable :sort-method="sortByDailyNewTradeAmount">
           <template #default="{ row }">
             <el-tag v-if="row.daily_new_trade_amount > 0" type="warning">
               +{{ formatAmount(row.daily_new_trade_amount) }}
@@ -209,7 +209,7 @@
             <span v-else>0</span>
           </template>
         </el-table-column>
-        <el-table-column prop="seven_day_trade_amount_change" label="近7日交易额变化" width="160" align="right" sortable>
+        <el-table-column prop="seven_day_trade_amount_change" label="近7日交易额变化" width="160" align="right" sortable :sort-method="sortBySevenDayTradeAmountChange">
           <template #default="{ row }">
             <span v-if="row.seven_day_trade_amount_change === null" class="no-data">-</span>
             <el-tag v-else-if="row.seven_day_trade_amount_change > 0" type="success">
@@ -276,6 +276,30 @@ const formatAmount = (amount) => {
   else {
     return num.toFixed(2)
   }
+}
+
+// 金额排序函数：确保按数值排序，处理 null 值
+const sortByAmount = (a, b, prop) => {
+  const aVal = parseFloat(a[prop]) || 0
+  const bVal = parseFloat(b[prop]) || 0
+  return aVal - bVal
+}
+
+// 累计邀请交易额排序
+const sortByTotalTradeAmount = (a, b) => {
+  return sortByAmount(a, b, 'total_trade_amount')
+}
+
+// 昨日新增交易额排序
+const sortByDailyNewTradeAmount = (a, b) => {
+  return sortByAmount(a, b, 'daily_new_trade_amount')
+}
+
+// 近7日交易额变化排序（需要处理 null）
+const sortBySevenDayTradeAmountChange = (a, b) => {
+  const aVal = a.seven_day_trade_amount_change === null ? -Infinity : parseFloat(a.seven_day_trade_amount_change)
+  const bVal = b.seven_day_trade_amount_change === null ? -Infinity : parseFloat(b.seven_day_trade_amount_change)
+  return aVal - bVal
 }
 
 const loadDashboardData = async () => {
