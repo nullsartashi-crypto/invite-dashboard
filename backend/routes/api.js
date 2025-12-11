@@ -337,6 +337,50 @@ router.get('/dashboard', async (req, res) => {
       ORDER BY d.daily_new_trade_users DESC
     `, [yesterdayStr]);
 
+    // 计算7天前的日期
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 8); // -8 因为昨天是-1，再往前7天
+    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+
+    // 获取7天前的数据（用于计算7日变化）
+    const [sevenDaysAgoData] = await db.query(`
+      SELECT
+        invite_code,
+        total_invite_users,
+        total_trade_users,
+        total_trade_amount
+      FROM daily_invite_data
+      WHERE record_date = ?
+        AND invite_code IN (SELECT invite_code FROM invite_codes WHERE status = 1)
+    `, [sevenDaysAgoStr]);
+
+    // 将7天前的数据转换为Map，方便查找
+    const sevenDaysAgoMap = new Map();
+    sevenDaysAgoData.forEach(row => {
+      sevenDaysAgoMap.set(row.invite_code, {
+        total_invite_users: row.total_invite_users || 0,
+        total_trade_users: row.total_trade_users || 0,
+        total_trade_amount: parseFloat(row.total_trade_amount || 0)
+      });
+    });
+
+    // 为latestData的每一行计算7日变化
+    latestData.forEach(row => {
+      const sevenDaysAgoRow = sevenDaysAgoMap.get(row.invite_code);
+
+      if (sevenDaysAgoRow) {
+        // 有7天前的数据，计算变化
+        row.seven_day_invite_users_change = (row.total_invite_users || 0) - sevenDaysAgoRow.total_invite_users;
+        row.seven_day_trade_users_change = (row.total_trade_users || 0) - sevenDaysAgoRow.total_trade_users;
+        row.seven_day_trade_amount_change = parseFloat(row.total_trade_amount || 0) - sevenDaysAgoRow.total_trade_amount;
+      } else {
+        // 没有7天前的数据（新添加的邀请码），变化值设为null
+        row.seven_day_invite_users_change = null;
+        row.seven_day_trade_users_change = null;
+        row.seven_day_trade_amount_change = null;
+      }
+    });
+
     // 计算起始日期（使用UTC时间，与latestData保持一致）
     const startDate = new Date();
     startDate.setUTCDate(startDate.getUTCDate() - parseInt(days));

@@ -185,6 +185,42 @@
             <span v-else>0</span>
           </template>
         </el-table-column>
+        <el-table-column label="近7日邀请人数变化" width="160" align="right">
+          <template #default="{ row }">
+            <span v-if="row.seven_day_invite_users_change === null" class="no-data">-</span>
+            <el-tag v-else-if="row.seven_day_invite_users_change > 0" type="success">
+              +{{ row.seven_day_invite_users_change }}
+            </el-tag>
+            <el-tag v-else-if="row.seven_day_invite_users_change < 0" type="danger">
+              {{ row.seven_day_invite_users_change }}
+            </el-tag>
+            <span v-else>0</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="近7日交易人数变化" width="160" align="right">
+          <template #default="{ row }">
+            <span v-if="row.seven_day_trade_users_change === null" class="no-data">-</span>
+            <el-tag v-else-if="row.seven_day_trade_users_change > 0" type="success">
+              +{{ row.seven_day_trade_users_change }}
+            </el-tag>
+            <el-tag v-else-if="row.seven_day_trade_users_change < 0" type="danger">
+              {{ row.seven_day_trade_users_change }}
+            </el-tag>
+            <span v-else>0</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="近7日交易额变化" width="160" align="right">
+          <template #default="{ row }">
+            <span v-if="row.seven_day_trade_amount_change === null" class="no-data">-</span>
+            <el-tag v-else-if="row.seven_day_trade_amount_change > 0" type="success">
+              +{{ formatAmount(row.seven_day_trade_amount_change) }}
+            </el-tag>
+            <el-tag v-else-if="row.seven_day_trade_amount_change < 0" type="danger">
+              {{ formatAmount(row.seven_day_trade_amount_change) }}
+            </el-tag>
+            <span v-else>0</span>
+          </template>
+        </el-table-column>
       </el-table>
     </el-card>
   </div>
@@ -632,6 +668,11 @@ onBeforeUnmount(() => {
 }
 
 .data-table :deep(.el-table td) {
+  font-size: 14px;
+}
+
+.no-data {
+  color: #909399;
   font-size: 14px;
 }
 </style>
